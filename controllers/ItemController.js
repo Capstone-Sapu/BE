@@ -1,8 +1,10 @@
+/* eslint-disable camelcase */
 /* eslint-disable import/extensions */
 /* eslint-disable consistent-return */
 import fs from 'fs';
 import path from 'path';
 import { Op } from 'sequelize';
+import cloudinary from '../config/cloudinary.js';
 import Item from '../models/ItemModel.js';
 
 export const getItems = async (req, res) => {
@@ -42,38 +44,90 @@ export const getItemById = async (req, res) => {
   }
 };
 
-export const saveItem = (req, res) => {
-  if (req.files === null) return res.status(400).json({ msg: 'No file Uploaded' });
-  const name = req.body.title;
-  const { file } = req.files;
-  const fileSize = file.data.length;
-  const ext = path.extname(file.name);
-  const fileName = file.md5 + ext;
-  const url = `${req.protocol}://${req.get('host')}/images/${fileName}`;
-  const { description } = req.body;
-  const { price } = req.body;
-  const allowedType = ['.png', '.jpg', '.jpeg'];
+export const saveItem = async (req, res) => {
+  try {
+    if (req.files === null) return res.status(400).json({ msg: 'No file uploaded' });
 
-  if (!allowedType.includes(ext.toLowerCase())) {
-    return res.status(422).json({
-      msg:
-        'Invalid Images',
-    });
-  }
-  if (fileSize > 5000000) return res.status(422).json({ msg: 'Image must be less than 5 MB' });
+    const name = req.body.title;
+    const { file } = req.files;
 
-  file.mv(`./public/images/${fileName}`, async (err) => {
-    if (err) return res.status(500).json({ msg: err.message });
-    try {
-      await Item.create({
-        name, image: fileName, url, description, price,
-      });
-      res.status(201).json({ msg: 'Item Created Successfuly' });
-    } catch (error) {
-      console.log(error.message);
+    if (!file || !file.name) {
+      return res.status(400).json({ msg: 'Invalid file data' });
     }
-  });
+
+    const ext = path.extname(file.name);
+    const allowedTypes = ['.png', '.jpg', '.jpeg'];
+
+    if (!allowedTypes.includes(ext.toLowerCase())) {
+      return res.status(422).json({
+        msg: 'Invalid image format',
+      });
+    }
+
+    const result = await cloudinary.v2.uploader.upload(file.tempFilePath, {
+      folder: 'SAPU', // Set your desired folder in Cloudinary
+      use_filename: true,
+      unique_filename: true,
+    });
+
+    const { secure_url: url, public_id: cloudinaryId } = result;
+    const { description, price } = req.body;
+
+    await Item.create({
+      name,
+      image: cloudinaryId, // Save the Cloudinary public_id
+      url,
+      description,
+      price,
+    });
+
+    res.status(201).json({ msg: 'Item created successfully' });
+
+    // The rest of your code...
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ msg: 'Internal Server Error' });
+  }
 };
+
+// export const saveItem = async (req, res) => {
+//   try {
+//     if (req.files === null) return res.status(400).json({ msg: 'No file uploaded' });
+
+//     const name = req.body.title;
+//     const { file } = req.files;
+//     const ext = path.extname(file);
+//     const allowedTypes = ['.png', '.jpg', '.jpeg'];
+
+//     if (!allowedTypes.includes(ext.toLowerCase())) {
+//       return res.status(422).json({
+//         msg: 'Invalid image format',
+//       });
+//     }
+
+//     const result = await cloudinary.v2.uploader.upload(file.tempFilePath, {
+//       folder: 'home', // Set your desired folder in Cloudinary
+//       use_filename: true,
+//       unique_filename: true,
+//     });
+
+//     const { secure_url: url, public_id: cloudinaryId } = result;
+//     const { description, price } = req.body;
+
+//     await Item.create({
+//       name,
+//       image: cloudinaryId, // Save the Cloudinary public_id
+//       url,
+//       description,
+//       price,
+//     });
+
+//     res.status(201).json({ msg: 'Item created successfully' });
+//   } catch (error) {
+//     console.error(error.message);
+//     res.status(500).json({ msg: 'Internal Server Error' });
+//   }
+// };
 
 export const updateItem = async (req, res) => {
   const item = await Item.findOne({
