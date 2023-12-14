@@ -1,6 +1,8 @@
+/* eslint-disable camelcase */
+/* eslint-disable import/extensions */
+/* eslint-disable consistent-return */
 import fs from 'fs';
-import Item from "../models/ItemModel.js";
-import path from "path";
+import path from 'path';
 import { Op } from 'sequelize';
 import { initializeApp } from "firebase/app";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject,} from "firebase/storage";
@@ -18,43 +20,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 
-
 export const getItems = async (req, res) => {
-    try {
-      const searchQuery = req.query.search;
-  
-      let queryOptions = {};
-  
-      if (searchQuery) {
-        queryOptions = {
-          where: {
-            [Op.or]: [
-              { name: { [Op.like]: `%${searchQuery}%` } },
-            ],
-          },
-        };
-      }
-  
-      const items = await Item.findAll(queryOptions);
-      res.json(items);
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ msg: 'Terjadi kesalahan server' });
+  try {
+    const searchQuery = req.query.search;
+
+    let queryOptions = {};
+
+    if (searchQuery) {
+      queryOptions = {
+        where: {
+          [Op.or]: [
+            { name: { [Op.like]: `%${searchQuery}%` } },
+          ],
+        },
+      };
     }
-  };
-  
-export const getItemById = async (req, res)=>{
-    try{
-        const response = await Item.findOne({
-            where:{
-                id : req.params.id
-            }
-        });
-        res.json(response);
-    } catch (error){
-        console.log(error.message);
-    }
-}
 
 export const saveItem = async (req, res) => {
     if (req.files === null) return res.status(400).json({ msg: "No file uploaded" });

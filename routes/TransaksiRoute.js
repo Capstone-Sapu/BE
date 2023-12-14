@@ -1,12 +1,13 @@
-import express from "express";
+/* eslint-disable import/extensions */
+import express from 'express';
 import {
-    getTransaksi,
-    getTableTransaksi,
-    getTransaksiById,
-    createTransaksi,
-    updateBalance,
-    deleteTransaksi
-} from "../controllers/TransaksiController.js";
+  getTransaksi,
+  getTableTransaksi,
+  getTransaksiById,
+  createTransaksi,
+  updateBalance,
+  deleteTransaksi,
+} from '../controllers/TransaksiController.js';
 
 const router = express.Router();
 

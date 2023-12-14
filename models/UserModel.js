@@ -1,3 +1,5 @@
+/* eslint-disable import/extensions */
+/* eslint-disable no-dupe-keys */
 import { Sequelize } from 'sequelize';
 import db from '../config/database.js';
 
@@ -9,46 +11,46 @@ const Users = db.define('users', {
     defaultValue: DataTypes.UUIDV4,
     allowNull: false,
     validate: {
-      notEmpty: true
-    }
+      notEmpty: true,
+    },
   },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
       notEmpty: true,
-      len: [3, 100]
-    }
+      len: [3, 100],
+    },
   },
   username: {
     type: DataTypes.STRING,
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      notEmpty: true
-    }
+      notEmpty: true,
+    },
   },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
       notEmpty: true,
-      isEmail: true
-    }
+      isEmail: true,
+    },
   },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      notEmpty: true
-    }
+      notEmpty: true,
+    },
   },
   role: {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      notEmpty: true
-    }
+      notEmpty: true,
+    },
   },
   refresh_token: {
     type: DataTypes.TEXT,
