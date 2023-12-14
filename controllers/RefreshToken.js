@@ -8,7 +8,7 @@ export const refreshToken = async (req, res) => {
   try {
     // eslint-disable-next-line no-shadow
     const { refreshToken } = req.cookies;
-    if (!refreshToken) return res.sendStatus(401);
+    // if (!refreshToken) return res.sendStatus(401);
     const user = await Users.findAll({
       where: {
         refresh_token: refreshToken,

@@ -4,8 +4,21 @@
 import fs from 'fs';
 import path from 'path';
 import { Op } from 'sequelize';
-import cloudinary from '../config/cloudinary.js';
-import Item from '../models/ItemModel.js';
+import { initializeApp } from "firebase/app";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject,} from "firebase/storage";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCsep7MLviWXB7C-L4zt6XI5kEgzoNrQmY",
+  authDomain: "sapu-project-af7ea.firebaseapp.com",
+  projectId: "sapu-project-af7ea",
+  storageBucket: "sapu-project-af7ea.appspot.com",
+  messagingSenderId: "159292158231",
+  appId: "1:159292158231:web:f521459b29dbba0e184752",
+  measurementId: "G-SBSGVKV41Y"
+};
+
+const app = initializeApp(firebaseConfig);
+const storage = getStorage(app);
 
 export const getItems = async (req, res) => {
   try {
@@ -23,180 +36,132 @@ export const getItems = async (req, res) => {
       };
     }
 
-    const items = await Item.findAll(queryOptions);
-    res.json(items);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: 'Terjadi kesalahan server' });
-  }
-};
-
-export const getItemById = async (req, res) => {
-  try {
-    const response = await Item.findOne({
-      where: {
-        id: req.params.id,
-      },
-    });
-    res.json(response);
-  } catch (error) {
-    console.log(error.message);
-  }
-};
-
 export const saveItem = async (req, res) => {
-  try {
-    if (req.files === null) return res.status(400).json({ msg: 'No file uploaded' });
+    if (req.files === null) return res.status(400).json({ msg: "No file uploaded" });
+  
+    const file = req.files.file;
+    const ext = path.extname(file.name);
+    const fileName = file.md5 + ext;
+    const storageRef = ref(storage, `images/${fileName}`);
+  
+    try {
+      await uploadBytes(storageRef, file.data);
+  
+      
+      const imageUrl = await getDownloadURL(storageRef);
+  
 
+      const name = req.body.title;
+      const description = req.body.description;
+      const price = req.body.price;
+  
+  
+      await Item.create({ name, image: fileName, url: imageUrl, description, price });
+  
+      res.status(201).json({ msg: "Item created successfully" });
+    } catch (error) {
+      console.error("Error uploading file to Firebase Cloud Storage:", error);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
+
+  export const updateItem = async (req, res) => {
+    const item = await Item.findOne({
+      where: {
+        id: req.params.id
+      }
+    });
+  
+    if (!item) return res.status(404).json({ msg: "No Data Found" });
+     let fileName = "";
+     let imageUrl = "";
+  
+    // Cek apakah ada file yang diunggah
+    if (req.files === null) {
+        fileName = item.image;
+        imageUrl = item.url;
+    
+    } else {
+      const file = req.files.file;
+      const fileSize = file.data.length;
+      const ext = path.extname(file.name);
+      fileName = file.md5 + ext;
+      const allowedType = ['.png', '.jpg', '.jpeg'];
+  
+      // Validasi tipe file dan ukuran file
+      if (!allowedType.includes(ext.toLowerCase())) {
+        return res.status(422).json({ msg: "Invalid Images" });
+      }
+  
+      if (fileSize > 5000000) {
+        return res.status(422).json({ msg: "Image must be less than 5 MB" });
+      }
+  
+      // Hapus file gambar yang lama di Firebase Cloud Storage
+      const oldImageRef = ref(storage, `images/${item.image}`);
+      await deleteObject(oldImageRef);
+  
+      // Upload gambar baru ke Firebase Cloud Storage
+      const newImageRef = ref(storage, `images/${fileName}`);
+      await uploadBytes(newImageRef, file.data);
+  
+      // Dapatkan URL unduhan baru dari Firebase Cloud Storage
+      imageUrl = await getDownloadURL(newImageRef);
+    }
     const name = req.body.title;
-    const { file } = req.files;
-
-    if (!file || !file.name) {
-      return res.status(400).json({ msg: 'Invalid file data' });
+    const description = req.body.description;
+    const price = req.body.price;
+    
+    try {
+      // Update data item di database
+      await Item.update(
+        {
+          name: name,
+          image: fileName,
+          url: imageUrl,
+          description: description,
+          price: price
+        },
+        {
+          where: {
+            id: req.params.id
+          }
+        }
+      );
+      res.status(200).json({ msg: "Item Updated Successfully" });
+    } catch (error) {
+      console.log(error.message);
+      return res.status(500).json({ msg: "Internal Server Error" });
     }
+  };
 
-    const ext = path.extname(file.name);
-    const allowedTypes = ['.png', '.jpg', '.jpeg'];
-
-    if (!allowedTypes.includes(ext.toLowerCase())) {
-      return res.status(422).json({
-        msg: 'Invalid image format',
-      });
-    }
-
-    const result = await cloudinary.v2.uploader.upload(file.tempFilePath, {
-      folder: 'SAPU', // Set your desired folder in Cloudinary
-      use_filename: true,
-      unique_filename: true,
-    });
-
-    const { secure_url: url, public_id: cloudinaryId } = result;
-    const { description, price } = req.body;
-
-    await Item.create({
-      name,
-      image: cloudinaryId, // Save the Cloudinary public_id
-      url,
-      description,
-      price,
-    });
-
-    res.status(201).json({ msg: 'Item created successfully' });
-
-    // The rest of your code...
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ msg: 'Internal Server Error' });
-  }
-};
-
-// export const saveItem = async (req, res) => {
-//   try {
-//     if (req.files === null) return res.status(400).json({ msg: 'No file uploaded' });
-
-//     const name = req.body.title;
-//     const { file } = req.files;
-//     const ext = path.extname(file);
-//     const allowedTypes = ['.png', '.jpg', '.jpeg'];
-
-//     if (!allowedTypes.includes(ext.toLowerCase())) {
-//       return res.status(422).json({
-//         msg: 'Invalid image format',
-//       });
-//     }
-
-//     const result = await cloudinary.v2.uploader.upload(file.tempFilePath, {
-//       folder: 'home', // Set your desired folder in Cloudinary
-//       use_filename: true,
-//       unique_filename: true,
-//     });
-
-//     const { secure_url: url, public_id: cloudinaryId } = result;
-//     const { description, price } = req.body;
-
-//     await Item.create({
-//       name,
-//       image: cloudinaryId, // Save the Cloudinary public_id
-//       url,
-//       description,
-//       price,
-//     });
-
-//     res.status(201).json({ msg: 'Item created successfully' });
-//   } catch (error) {
-//     console.error(error.message);
-//     res.status(500).json({ msg: 'Internal Server Error' });
-//   }
-// };
-
-export const updateItem = async (req, res) => {
-  const item = await Item.findOne({
-    where: {
-      id: req.params.id,
-    },
-  });
-  if (!item) return res.status(404).json({ msg: 'No Data Found' });
-  let fileName = '';
-  if (req.files === null) {
-    fileName = item.image;
-  } else {
-    const { file } = req.files;
-    const fileSize = file.data.length;
-    const ext = path.extname(file.name);
-    fileName = file.md5 + ext;
-    const allowedType = ['.png', '.jpg', '.jpeg'];
-
-    if (!allowedType.includes(ext.toLowerCase())) {
-      return res.status(422).json({
-        msg:
-            'Invalid Images',
-      });
-    }
-    if (fileSize > 5000000) return res.status(422).json({ msg: 'Image must be less than 5 MB' });
-
-    const filepath = `./public/images/${item.image}`;
-    fs.unlinkSync(filepath);
-
-    file.mv(`./public/images/${fileName}`, async (err) => {
-      if (err) return res.status(500).json({ msg: err.message });
-    });
-  }
-  const name = req.body.title;
-  const url = `${req.protocol}://${req.get('host')}/images/${fileName}`;
-  const { description } = req.body;
-  const { price } = req.body;
-
-  try {
-    await Item.update({
-      name, image: fileName, url, description, price,
-    }, {
+  export const deleteItem = async (req, res) => {
+    const item = await Item.findOne({
       where: {
-        id: req.params.id,
-      },
+        id: req.params.id
+      }
     });
-    res.status(200).json({ msg: 'Item Uploaded Successfuly' });
-  } catch (error) {
-    console.log(error.message);
-  }
-};
-
-export const deleteItem = async (req, res) => {
-  const item = await Item.findOne({
-    where: {
-      id: req.params.id,
-    },
-  });
-  if (!item) return res.status(404).json({ msg: 'No Data Found' });
-  try {
-    const filepath = `./public/images/${item.image}`;
-    fs.unlinkSync(filepath);
-    await Item.destroy({
-      where: {
-        id: req.params.id,
-      },
-    });
-    res.status(200).json({ msg: 'Item Deleted Successfuly' });
-  } catch (error) {
-    console.log(error.message);
-  }
-};
+  
+    if (!item) {
+      return res.status(404).json({ msg: "No Data Found" });
+    }
+  
+    try {
+      // Hapus file gambar dari Firebase Cloud Storage
+      const storage = getStorage(app);
+      const imageRef = ref(storage, `images/${item.image}`);
+     
+  
+      // Hapus item dari database
+      await Item.destroy({
+        where: {
+          id: req.params.id
+        }
+      });
+      await deleteObject(imageRef);
+      res.status(200).json({ msg: "Item Deleted Successfully" });
+    } catch (error) {
+      console.log(error.message);
+      return res.status(500).json({ msg: "Internal Server Error" });
+    }
+  };
