@@ -1,6 +1,8 @@
+/* eslint-disable import/no-unresolved */
 /* eslint-disable no-shadow */
 /* eslint-disable consistent-return */
 /* eslint-disable import/extensions */
+
 import path from 'path';
 import { Op } from 'sequelize';
 import { initializeApp } from 'firebase/app';
