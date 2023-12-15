@@ -1,3 +1,4 @@
+/* eslint-disable import/named */
 /* eslint-disable import/extensions */
 /* eslint-disable indent */
 import express from 'express';
