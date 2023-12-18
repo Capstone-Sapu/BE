@@ -9,6 +9,7 @@ import db from './config/database.js';
 import router from './routes/index.js';
 import ItemRoute from './routes/ItemRoute.js';
 import TransaksiRoute from './routes/TransaksiRoute.js';
+import RiwayatRoute from './routes/RiwayatRoute.js';
 
 dotenv.config();
 const app = express();
@@ -30,5 +31,6 @@ app.use(express.static('public'));
 app.use(router);
 app.use(ItemRoute);
 app.use(TransaksiRoute);
+app.use(RiwayatRoute);
 
 app.listen(process.env.APP_URL, () => console.log('Server running at port 4000'));

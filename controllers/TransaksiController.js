@@ -6,6 +6,7 @@ import { Op } from 'sequelize';
 import Transaksi from '../models/TransaksiModel.js';
 import Users from '../models/UserModel.js';
 import Item from '../models/ItemModel.js';
+import Riwayat from '../models/RiwayatModel.js';
 
 export const getTransaksi = async (req, res) => {
   try {
@@ -115,11 +116,27 @@ export const updateBalance = async (req, res) => {
       return res.status(404).json({ msg: 'Pengguna tidak ditemukan' });
     }
 
+    const item = await Item.findByPk(transaksi.id_item);
+    if (!item) {
+      return res.status(404).json({ msg: 'Pengguna tidak ditemukan' });
+    }
+
     const updatedBalance = user.balance + transaksi.total;
 
     await user.update({ balance: updatedBalance });
 
     await transaksi.destroy();
+
+    await Riwayat.create({
+      id_user: user.id,
+      id_item: item.id,
+      price: item.id,
+      noHp: transaksi.noHp,
+      quantity: transaksi.quantity,
+      address: transaksi.address,
+      date: transaksi.date,
+      total: transaksi.total,
+    });
 
     res.status(200).json({ msg: 'Saldo berhasil ditambahkan, dan transaksi terhapus' });
   } catch (error) {
