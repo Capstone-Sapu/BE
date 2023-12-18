@@ -3,7 +3,7 @@
 import Sequelize from 'sequelize';
 import db from '../config/database.js'; // Pastikan sesuaikan dengan konfigurasi proyek Anda
 
-const Item = db.define('Item', {
+const Item = db.define('product', {
   name: {
     type: Sequelize.STRING,
     allowNull: false,
